@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { Loader2, AudioLines, FileText, Sparkles, Wand2 } from 'lucide-react'
-import { generateSummaryDummy, Summary } from '@/utils/summary'
+import { generateSummary, Summary } from '@/utils/summary'
 import { Caption } from './InitialScreen'
 
 interface LoadingScreenProps {
@@ -23,12 +23,12 @@ export function LoadingScreen({ isExtractingAudio, onSummaryGenerated, onSummary
         const controller = new AbortController();
         const timeoutId = setTimeout(() => {
             controller.abort(); // This triggers the catch block
-        }, 6000);
+        }, 60000);
 
         const generateSummaries = async () => {
             try {
                 // Pass the signal to your dummy function or fetch call
-                const resultingSummaries = await generateSummaryDummy(captions, {
+                const resultingSummaries = await generateSummary(captions, {
                     signal: controller.signal
                 });
 
@@ -39,7 +39,7 @@ export function LoadingScreen({ isExtractingAudio, onSummaryGenerated, onSummary
             } catch (err: any) {
                 // Check if the error was caused by the timeout (abort)
                 if (err.name === 'AbortError') {
-                    console.error("Request timed out after 6 seconds");
+                    console.error("Request timed out after 60 seconds");
                 } else {
                     console.error("Request failed for other reasons", err);
                 }
