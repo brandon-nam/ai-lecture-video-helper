@@ -24,14 +24,42 @@ function App() {
     const [summaries, setSummaries] = useState<Summary[]>([])
     const [transcriptions, setTranscriptions] = useState<TranscriptionSegment[]>([])
     const [processMode, setProcessMode] = useState<ProcessMode>('summary')
+    const [videoId, setVideoId] = useState<string | null>(null)
+    const [additionalPrompt, setAdditionalPrompt] = useState<string | undefined>(undefined)
 
-
-
-    // Simulate caption detection from Panopto
+    // Initialize data and load saved state
     useEffect(() => {
         const initializeData = async () => {
             try {
                 console.log("🔍 Checking Panopto data...");
+
+                // Get current tab to extract deliveryId
+                const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+                if (tab?.url) {
+                    const url = new URL(tab.url);
+                    const id = url.searchParams.get('id');
+                    if (id) {
+                        setVideoId(id);
+                        console.log("📍 Video ID detected:", id);
+
+                        // Load saved state from storage
+                        const result = await chrome.storage.local.get(id);
+                        if (result[id]) {
+                            const saved = result[id] as {
+                                summaries?: Summary[],
+                                transcriptions?: TranscriptionSegment[],
+                                processMode?: ProcessMode
+                            };
+                            console.log("💎 Found saved state for this video");
+                            setSummaries(saved.summaries || []);
+                            setTranscriptions(saved.transcriptions || []);
+                            setProcessMode(saved.processMode || 'summary');
+                            if ((saved.summaries && saved.summaries.length > 0) || (saved.transcriptions && saved.transcriptions.length > 0)) {
+                                setScreen('results');
+                            }
+                        }
+                    }
+                }
 
                 // Run both fetches in parallel for better performance
                 const [captionData, url] = await Promise.all([
@@ -43,7 +71,6 @@ function App() {
                 if (captionData && captionData.length > 0) {
                     setHasCaptions(true);
                     setCaptions(captionData);
-                    console.log(captionData)
                     console.log(`✅ Loaded ${captionData.length} captions`);
                 } else {
                     setHasCaptions(false);
@@ -69,9 +96,19 @@ function App() {
         initializeData();
     }, []);
 
-
-
-
+    // Effect to save state to storage when results change
+    useEffect(() => {
+        if (videoId && (summaries.length > 0 || transcriptions.length > 0)) {
+            console.log("💾 Saving state to storage for video:", videoId);
+            chrome.storage.local.set({
+                [videoId]: {
+                    summaries,
+                    transcriptions,
+                    processMode
+                }
+            });
+        }
+    }, [videoId, summaries, transcriptions, processMode]);
 
     const handleSelectTopic = (topic: Summary) => {
         setSelectedTopic(topic)
@@ -83,12 +120,30 @@ function App() {
     }
 
     const handleStartSummary = async () => {
+        setAdditionalPrompt(undefined)
         setProcessMode('summary')
         setScreen('loading')
     }
 
     const handleStartTranscription = async () => {
+        setAdditionalPrompt(undefined)
         setProcessMode('transcription')
+        setScreen('loading')
+    }
+
+    const handleRedo = () => {
+        setScreen('initial')
+        setSummaries([])
+        setTranscriptions([])
+        setAdditionalPrompt(undefined)
+        if (videoId) {
+            chrome.storage.local.remove(videoId);
+        }
+    }
+
+    const handleRedoWithPrompt = (prompt: string) => {
+        setAdditionalPrompt(prompt)
+        setProcessMode('summary')
         setScreen('loading')
     }
 
@@ -97,8 +152,8 @@ function App() {
         setScreen('error')
     }
 
-    const handleSummaryGenerated = (summaries: Summary[]) => {
-        setSummaries(summaries)
+    const handleSummaryGenerated = (newSummaries: Summary[]) => {
+        setSummaries(newSummaries)
         setScreen('results')
     }
 
@@ -142,6 +197,7 @@ function App() {
                         captions={captions}
                         streamUrl={streamUrl}
                         duration={duration}
+                        additionalPrompt={additionalPrompt}
                     />
                 )}
 
@@ -153,6 +209,8 @@ function App() {
                         transcriptions={transcriptions}
                         initialMode={processMode}
                         onSelectTopic={handleSelectTopic}
+                        onRedo={handleRedo}
+                        onRedoWithPrompt={handleRedoWithPrompt}
                     />
                 )}
 
