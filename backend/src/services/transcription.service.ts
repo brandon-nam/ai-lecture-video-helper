@@ -32,15 +32,16 @@ export const createTranscriptionService = async (data: TranscriptionInput): Prom
 
 
 const convertToAudio = async (videoUrl: string, outputFileName: string) => {
-    const metadata: any = await new Promise((resolve, reject) => {
-        ffmpeg(videoUrl).ffprobe((err, data) => {
-            if (err) reject(err);
-            else resolve(data);
-        });
+    let totalDuration;
+    ffmpeg(videoUrl).ffprobe((err, metadata) => {
+        if (err) {
+            console.error("Error probing video:", err);
+            return;
+        }
+        totalDuration = metadata.format.duration;
+        console.log(`Video duration: ${totalDuration} seconds`);
     });
 
-    const totalDuration = metadata.format.duration;
-    console.log(`Video duration: ${totalDuration} seconds`);
     await processInParallel(totalDuration, 900);
 }
 
