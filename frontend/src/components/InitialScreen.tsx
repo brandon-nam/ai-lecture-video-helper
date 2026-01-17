@@ -34,7 +34,7 @@ export function InitialScreen({ onStartSummary, onStartTranscription, hasCaption
                 <p className="text-sm text-muted-foreground max-w-[280px]">
                     {hasCaptions
                         ? 'We found lecture captions! We can generate a summary directly using the Panopto API.'
-                        : 'No captions were found. We will need to extract medical audio and transcribe it first.'}
+                        : 'No captions were found. We will need to extract audio and transcribe it first.'}
                 </p>
             </div>
 
