@@ -7,10 +7,9 @@ import ffmpegStatic from 'ffmpeg-static';
 import ffprobeStatic from 'ffprobe-static';
 
 // import { PassThrough } from 'stream';
-const videoUrl: string = 'https://s-cloudfront.cdn.ap.panopto.com/sessions/c2405e48-0c2e-469e-a67f-b3ca00db4a0e/e14faa86-2c3f-4dff-953a-b3ca00db4a18-b5830cf8-3068-4665-89c2-b3d0006027d9.hls/310791/fragmented.mp4';
-const outputFileName: string = 'output.opus';
-
-
+// Output file used for temporary audio storage
+const TEMP_OUTPUT_FILE = 'output.mp3';
+const TEMP_DIR = './temp_dir';
 
 // Check if the path exists and tell fluent-ffmpeg where it is
 if (ffmpegStatic) {
@@ -25,9 +24,10 @@ if (ffprobeStatic) {
 }
 
 export const createTranscriptionService = async (data: TranscriptionInput): Promise<any> => {
-    await convertToAudio(data.url, outputFileName);
-    const transcription = await transcribeAudio(outputFileName);
-    return transcription;
+    await convertToAudio(data.url, TEMP_OUTPUT_FILE);
+    // const transcription = await transcribeAudio(TEMP);
+    // return transcription;
+    return [];
 };
 const convertToAudio = async (videoUrl: string, outputFileName: string) => {
     const metadata: any = await new Promise((resolve, reject) => {
@@ -39,11 +39,11 @@ const convertToAudio = async (videoUrl: string, outputFileName: string) => {
 
     const totalDuration = metadata.format.duration;
     console.log(`Video duration: ${totalDuration} seconds`);
-    await processInParallel(totalDuration, 900);
+    await processInParallel(videoUrl, totalDuration, 900);
 }
 
 
-async function processInParallel(totalDuration: number, segmentDuration: number) {
+async function processInParallel(videoUrl: string, totalDuration: number, segmentDuration: number) {
     const tasks = [];
 
     // Step 1: Create separate conversion tasks for each segment
@@ -74,5 +74,5 @@ async function processInParallel(totalDuration: number, segmentDuration: number)
 
     mergedCommand
         .on('end', () => console.log('Final audio combined!'))
-        .mergeToFile('final_output.mp3', './temp_dir/');
+        .mergeToFile(TEMP_OUTPUT_FILE, TEMP_DIR);
 }
