@@ -5,6 +5,7 @@ import { ResultScreen } from './components/ResultScreen'
 import { DetailsScreen } from './components/DetailsScreen'
 import { Summary } from './utils/summary'
 import { getCaptions } from './utils/captions'
+import { getStreamUrl } from './utils/audio'
 import { ErrorScreen } from './components/ErrorScreen'
 
 type Screen = 'initial' | 'loading' | 'results' | 'details' | 'error'
@@ -14,24 +15,48 @@ function App() {
     const [selectedTopic, setSelectedTopic] = useState<Summary | null>(null)
     const [hasCaptions, setHasCaptions] = useState(false)
     const [captions, setCaptions] = useState<Caption[]>([])
+    const [streamUrl, setStreamUrl] = useState<string>("")
     const [summaries, setSummaries] = useState<Summary[]>([])
 
     // Simulate caption detection from Panopto
     useEffect(() => {
-        const fetchCaptions = async () => {
+        const initializeData = async () => {
             try {
-                const data = await getCaptions();
-                if (data) {
+                console.log("🔍 Checking Panopto data...");
+
+                // Run both fetches in parallel for better performance
+                const [captionData, url] = await Promise.all([
+                    getCaptions(),
+                    getStreamUrl()
+                ]);
+
+                // 1. Handle Captions
+                if (captionData && captionData.length > 0) {
                     setHasCaptions(true);
-                    console.log(data)
-                    setCaptions(data);
+                    setCaptions(captionData);
+                    console.log(captionData)
+                    console.log(`✅ Loaded ${captionData.length} captions`);
+                } else {
+                    setHasCaptions(false);
+                    console.log("ℹ️ No captions found");
                 }
+
+                // 2. Handle Stream URL
+                if (url) {
+                    setStreamUrl(url); // Assuming you have a setStreamUrl state
+                    console.log("✅ Stream URL captured:", url);
+                } else {
+                    console.log("ℹ️ No Stream URL found");
+                }
+
             } catch (err) {
-                console.error("Failed to load captions", err);
+                console.error("❌ Initialization failed", err);
+                setHasCaptions(false);
             }
         };
-        fetchCaptions();
-    }, [])
+
+        initializeData();
+    }, []);
 
 
 
@@ -87,6 +112,7 @@ function App() {
                         onSummaryGenerated={handleSummaryGenerated}
                         onSummaryGenerateFail={handleSummaryGenerateFail}
                         captions={captions}
+                        streamUrl={streamUrl}
                     />
                 )}
 
