@@ -7,10 +7,9 @@ import ffmpegStatic from 'ffmpeg-static';
 import ffprobeStatic from 'ffprobe-static';
 
 // import { PassThrough } from 'stream';
-const videoUrl: string = 'https://s-cloudfront.cdn.ap.panopto.com/sessions/c2405e48-0c2e-469e-a67f-b3ca00db4a0e/e14faa86-2c3f-4dff-953a-b3ca00db4a18-b5830cf8-3068-4665-89c2-b3d0006027d9.hls/310791/fragmented.mp4';
-const outputFileName: string = 'output.opus';
-
-
+// Output file used for temporary audio storage
+const TEMP_OUTPUT_FILE = 'output.opus';
+const TEMP_DIR = './temp_dir';
 
 // Check if the path exists and tell fluent-ffmpeg where it is
 if (ffmpegStatic) {
@@ -24,27 +23,26 @@ if (ffprobeStatic) {
     throw new Error("FFprobe binary path could not be resolved.");
 }
 
-export const createTranscriptionService = async (data: TranscriptionInput): Promise<any> => {
-    await convertToAudio(data.url, outputFileName);
-    const transcription = await transcribeAudio(outputFileName);
-    return transcription;
+export const createTranscriptionService = async (data: TranscriptionInput): Promise<any[]> => {
+    await convertToAudio(data.url, TEMP_OUTPUT_FILE);
+    return [];
 };
 const convertToAudio = async (videoUrl: string, outputFileName: string) => {
     const metadata: any = await new Promise((resolve, reject) => {
-        ffmpeg(videoUrl).ffprobe((err, data) => {
+        ffmpeg(videoUrl).ffprobe((err: any, data: any) => {
             if (err) reject(err);
             else resolve(data);
         });
     });
 
-    const totalDuration = metadata.format.duration;
+    const totalDuration = metadata.format?.duration || 0;
     console.log(`Video duration: ${totalDuration} seconds`);
-    await processInParallel(totalDuration, 900);
+    await processInParallel(videoUrl, totalDuration, 900, outputFileName);
 }
 
 
-async function processInParallel(totalDuration, segmentDuration) {
-    const tasks = [];
+async function processInParallel(videoUrl: string, totalDuration: number, segmentDuration: number, finalOutput: string) {
+    const tasks: Promise<string>[] = [];
 
     // Step 1: Create separate conversion tasks for each segment
     for (let start = 0; start < totalDuration; start += segmentDuration) {
@@ -69,10 +67,16 @@ async function processInParallel(totalDuration, segmentDuration) {
     const tempFiles = await Promise.all(tasks);
 
     // Step 3: Combine all temp files into one final output
-    const mergedCommand = ffmpeg();
-    tempFiles.forEach(file => mergedCommand.input(file));
+    return new Promise<void>((resolve, reject) => {
+        const mergedCommand = ffmpeg();
+        tempFiles.forEach((file: string) => mergedCommand.input(file));
 
-    mergedCommand
-        .on('end', () => console.log('Final audio combined!'))
-        .mergeToFile('final_output.mp3', './temp_dir/');
+        mergedCommand
+            .on('error', reject)
+            .on('end', () => {
+                console.log('Final audio combined!');
+                resolve();
+            })
+            .mergeToFile(finalOutput, TEMP_DIR);
+    });
 }
