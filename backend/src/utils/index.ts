@@ -1,6 +1,7 @@
 import express, { type Request, type Response, type Application } from 'express';
 import cors from 'cors';
 import { generateLectureSummary } from '../services/groq.js';
+import transcriptionRoutes from '../routes/transcription.routes.js';
 
 const app: Application = express();
 const PORT = 3000;
@@ -15,6 +16,8 @@ app.get('/', (req: Request, res: Response) => {
 app.get('/api/health', (_req: Request, res: Response) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
+
+app.use('/api/transcribe', transcriptionRoutes);
 
 app.post('/generate-summary', async (req: Request, res: Response) => {
     try {
