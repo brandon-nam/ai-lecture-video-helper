@@ -23,6 +23,28 @@ export function ResultScreen({ summaries, transcriptions, initialMode, onSelectT
         return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
     }
 
+    const seekVideo = (seconds: number) => {
+        console.log(`🎬 Seeking video to ${seconds}s`);
+        // @ts-ignore
+        if (typeof chrome !== 'undefined' && chrome.tabs) {
+            // @ts-ignore
+            chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+                if (tabs[0]?.id) {
+                    // @ts-ignore
+                    chrome.tabs.sendMessage(tabs[0].id, {
+                        action: "SEEK_VIDEO",
+                        time: seconds
+                    });
+                }
+            });
+        }
+    }
+
+    const parseTimestamp = (timestamp: string) => {
+        const [mins, secs] = timestamp.split(':').map(Number)
+        return (mins || 0) * 60 + (secs || 0)
+    }
+
 
     return (
         <div className="flex-1 flex flex-col space-y-6 animate-in fade-in slide-in-from-right-4 duration-500 overflow-hidden">
@@ -55,7 +77,14 @@ export function ResultScreen({ summaries, transcriptions, initialMode, onSelectT
                                     className="group relative bg-card hover:bg-accent/30 border border-border p-5 rounded-2xl cursor-pointer transition-all duration-300 hover:shadow-lg active:scale-[0.98]"
                                 >
                                     <div className="flex items-start justify-between mb-3">
-                                        <div className="flex items-center gap-2 px-2.5 py-1 bg-primary/10 text-primary rounded-full">
+                                        <div
+                                            className="flex items-center gap-2 px-2.5 py-1 bg-primary/10 text-primary rounded-full hover:bg-primary/20 transition-colors cursor-pointer"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                seekVideo(parseTimestamp(summary.timestamp));
+                                            }}
+                                            title="Click to seek"
+                                        >
                                             <Clock className="w-3 h-3" />
                                             <span className="text-[10px] font-bold font-mono uppercase tracking-wider">{summary.timestamp}</span>
                                         </div>
@@ -95,7 +124,11 @@ export function ResultScreen({ summaries, transcriptions, initialMode, onSelectT
                             <div className="space-y-4">
                                 {transcriptions.map((segment, i) => (
                                     <div key={i} className="flex gap-4 p-3 rounded-xl hover:bg-accent/20 transition-colors">
-                                        <div className="shrink-0 text-[10px] font-bold font-mono text-primary bg-primary/10 px-2 py-1 h-fit rounded-md">
+                                        <div
+                                            className="shrink-0 text-[10px] font-bold font-mono text-primary bg-primary/10 px-2 py-1 h-fit rounded-md hover:bg-primary/20 transition-colors cursor-pointer"
+                                            onClick={() => seekVideo(segment.start)}
+                                            title="Click to seek"
+                                        >
                                             {formatTime(segment.start)}
                                         </div>
                                         <p className="text-sm text-foreground leading-relaxed">
