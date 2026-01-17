@@ -38,24 +38,33 @@ const MOCK_SUMMARIES: Summary[] = [
     }
 ]
 
-export async function generateSummary(captions: Caption[], options: { signal: AbortSignal }) {
-    try {
-        const response = await fetch(`${BACKEND_URL}/generate-summary`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-            },
-            body: JSON.stringify({ captions }),
-            signal: options.signal
-        });
+export async function generateSummary(captions: Caption[], streamUrl: string, options: { signal: AbortSignal }): Promise<Summary[]> {
+    console.log(`Calling backend API with ${captions.length} captions and streamUrl: ${streamUrl ? 'Present' : 'None'}`)
 
-        const data = await response.json();
-        return data
+    // Map frontend 'caption' field to backend 'text' field
+    const mappedCaptions = captions.map(c => ({
+        text: c.caption,
+        time: c.time
+    }));
 
-    } catch (error) {
-        console.error('Error generating summary:', error);
+    const response = await fetch(`${BACKEND_URL}/generate-summary`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            captions: mappedCaptions,
+            streamUrl: streamUrl
+        }),
+        signal: options.signal
+    });
 
+    if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to generate summary');
     }
+
+    return response.json();
 }
 
 export async function generateSummaryDummy(

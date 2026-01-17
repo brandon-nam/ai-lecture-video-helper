@@ -1,4 +1,5 @@
 import type { Transcription, TranscriptionInput } from '../interfaces/transcription.interface.js';
+import { transcribeAudio } from './openai.js';
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
 const ffmpeg = require('fluent-ffmpeg');
@@ -17,20 +18,17 @@ if (ffmpegStatic) {
 } else {
     throw new Error("FFmpeg binary path could not be resolved.");
 }
-
 if (ffprobeStatic) {
     ffmpeg.setFfprobePath(ffprobeStatic.path);
 } else {
     throw new Error("FFprobe binary path could not be resolved.");
 }
 
-export const createTranscriptionService = async (data: TranscriptionInput): Promise<Transcription[]> => {
-    await convertToAudio(videoUrl, outputFileName);
-    return [];
+export const createTranscriptionService = async (data: TranscriptionInput): Promise<any> => {
+    await convertToAudio(data.url, outputFileName);
+    const transcription = await transcribeAudio(outputFileName);
+    return transcription;
 };
-
-
-
 const convertToAudio = async (videoUrl: string, outputFileName: string) => {
     const metadata: any = await new Promise((resolve, reject) => {
         ffmpeg(videoUrl).ffprobe((err, data) => {

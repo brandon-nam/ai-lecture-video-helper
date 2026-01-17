@@ -18,7 +18,9 @@
         "storage"
     ],
     "host_permissions": [
-        "https://mediaweb.ap.panopto.com/*"
+        "https://mediaweb.ap.panopto.com/*",
+        "https://*.panopto.eu/*",
+        "https://*.panopto.com/*"
     ],
     "content_scripts": [
         {

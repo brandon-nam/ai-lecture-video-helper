@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { Loader2, AudioLines, FileText, Sparkles, Wand2 } from 'lucide-react'
-import { generateSummaryDummy, Summary } from '@/utils/summary'
+import { generateSummary, Summary } from '@/utils/summary'
 import { Caption } from './InitialScreen'
 
 interface LoadingScreenProps {
@@ -8,27 +8,31 @@ interface LoadingScreenProps {
     onSummaryGenerated: (summaries: Summary[]) => void
     onSummaryGenerateFail: () => void
     captions: Caption[]
+    streamUrl: string
 }
 
-export function LoadingScreen({ isExtractingAudio, onSummaryGenerated, onSummaryGenerateFail, captions }: LoadingScreenProps) {
+export function LoadingScreen({ isExtractingAudio, onSummaryGenerated, onSummaryGenerateFail, captions, streamUrl }: LoadingScreenProps) {
     const [step, setStep] = useState(0)
     const containerRef = useRef<HTMLDivElement>(null)
     const activeStepRef = useRef<HTMLDivElement>(null)
 
     useEffect(() => {
-        // 1. Validation: Don't run if no captions exist
-        if (!captions || captions.length === 0) return;
+        // 1. Validation: Don't run if no content source exists
+        if ((!captions || captions.length === 0) && !streamUrl) {
+            console.error("No captions and no stream URL available.");
+            return;
+        }
 
         // 2. Setup AbortController and Timeout
         const controller = new AbortController();
         const timeoutId = setTimeout(() => {
             controller.abort(); // This triggers the catch block
-        }, 6000);
+        }, 60000);
 
         const generateSummaries = async () => {
             try {
                 // Pass the signal to your dummy function or fetch call
-                const resultingSummaries = await generateSummaryDummy(captions, {
+                const resultingSummaries = await generateSummary(captions, streamUrl, {
                     signal: controller.signal
                 });
 
@@ -39,7 +43,7 @@ export function LoadingScreen({ isExtractingAudio, onSummaryGenerated, onSummary
             } catch (err: any) {
                 // Check if the error was caused by the timeout (abort)
                 if (err.name === 'AbortError') {
-                    console.error("Request timed out after 6 seconds");
+                    console.error("Request timed out after 60 seconds");
                 } else {
                     console.error("Request failed for other reasons", err);
                 }
