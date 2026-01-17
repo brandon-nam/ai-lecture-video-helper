@@ -65,56 +65,7 @@ export function ResultScreen({ summaries, transcriptions, initialMode, onSelectT
         doc.save('transcription.pdf')
     }
 
-    const handleDownloadSummaryPDF = () => {
-        const doc = new jsPDF()
-        const title = "Lecture Summary"
-        doc.setFontSize(20)
-        doc.text(title, 20, 20)
 
-        let y = 35
-        const margin = 20
-        const pageWidth = doc.internal.pageSize.getWidth()
-        const maxWidth = pageWidth - (margin * 2)
-
-        summaries.forEach((topic) => {
-            // Topic Title
-            doc.setFontSize(14)
-            doc.setFont("helvetica", "bold")
-            const titleLines = doc.splitTextToSize(`${topic.timestamp} - ${topic.title}`, maxWidth)
-            if (y + (titleLines.length * 7) > 280) {
-                doc.addPage()
-                y = 20
-            }
-            doc.text(titleLines, margin, y)
-            y += (titleLines.length * 7) + 2
-
-            // Topic Summary
-            doc.setFontSize(11)
-            doc.setFont("helvetica", "normal")
-            const summaryLines = doc.splitTextToSize(topic.summary, maxWidth)
-            if (y + (summaryLines.length * 6) > 280) {
-                doc.addPage()
-                y = 20
-            }
-            doc.text(summaryLines, margin, y)
-            y += (summaryLines.length * 6) + 4
-
-            // Details
-            topic.details.forEach((detail) => {
-                const detailText = `• [${detail.timestamp}] ${detail.point}`
-                const detailLines = doc.splitTextToSize(detailText, maxWidth - 5)
-                if (y + (detailLines.length * 5) > 280) {
-                    doc.addPage()
-                    y = 20
-                }
-                doc.text(detailLines, margin + 5, y)
-                y += (detailLines.length * 5) + 1
-            })
-            y += 5
-        })
-
-        doc.save('lecture-summary.pdf')
-    }
 
     const handleDownloadMarkdown = () => {
         let content = `# Lecture Summary\n\n`
@@ -231,13 +182,7 @@ export function ResultScreen({ summaries, transcriptions, initialMode, onSelectT
                                     <FileText className="w-3.5 h-3.5" />
                                     MD
                                 </button>
-                                <button
-                                    onClick={handleDownloadSummaryPDF}
-                                    className="flex items-center gap-2 px-3 py-1.5 bg-primary/10 hover:bg-primary/20 text-primary text-[11px] font-bold rounded-full transition-all border border-primary/20"
-                                >
-                                    <FileDown className="w-3.5 h-3.5" />
-                                    PDF
-                                </button>
+
                             </div>
                         ) : (
                             <button
@@ -245,7 +190,7 @@ export function ResultScreen({ summaries, transcriptions, initialMode, onSelectT
                                 className="flex items-center gap-2 px-3 py-1.5 bg-primary/10 hover:bg-primary/20 text-primary text-[11px] font-bold rounded-full transition-all border border-primary/20"
                             >
                                 <FileDown className="w-3.5 h-3.5" />
-                                Download PDF
+                                PDF
                             </button>
                         )}
                     </div>
