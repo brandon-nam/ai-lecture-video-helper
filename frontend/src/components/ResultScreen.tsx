@@ -6,19 +6,30 @@ import { seekVideo, parseTimestamp, formatTime } from '@/utils/video'
 
 import { jsPDF } from 'jspdf'
 
+import { LoadingSteps } from './LoadingSteps'
+
 interface ResultScreenProps {
     summaries: Summary[]
     transcriptions: TranscriptionSegment[]
     initialMode: 'summary' | 'transcription'
     onSelectTopic: (topic: Summary) => void
     onRedo: () => void
-
+    isSummaryLoading: boolean
+    onLoadSummary: () => void
+    isExtractingAudio: boolean
 }
 
-export function ResultScreen({ summaries, transcriptions, initialMode, onSelectTopic, onRedo }: ResultScreenProps) {
+export function ResultScreen({ summaries, transcriptions, initialMode, onSelectTopic, onRedo, isSummaryLoading, onLoadSummary, isExtractingAudio }: ResultScreenProps) {
     const [viewMode, setViewMode] = useState<'summary' | 'transcription'>(initialMode)
     const [isRedoDropdownOpen, setIsRedoDropdownOpen] = useState(false)
     const dropdownRef = useRef<HTMLDivElement>(null)
+
+    // Trigger lazy loading when switching to summary tab
+    useEffect(() => {
+        if (viewMode === 'summary' && summaries.length === 0 && !isSummaryLoading) {
+            onLoadSummary()
+        }
+    }, [viewMode, summaries.length, isSummaryLoading, onLoadSummary])
 
     // Close dropdown when clicking outside
     useEffect(() => {
@@ -187,58 +198,66 @@ export function ResultScreen({ summaries, transcriptions, initialMode, onSelectT
                     <div className="p-4">
                         <div className="grid gap-4">
                             {viewMode === 'summary' ? (
-                                summaries.map((summary) => (
-                                    <div
-                                        key={summary.id}
-                                        onClick={() => onSelectTopic(summary)}
-                                        className="group relative bg-card hover:bg-accent/30 border border-border p-5 rounded-2xl cursor-pointer transition-all duration-300 hover:shadow-lg active:scale-[0.98]"
-                                    >
-                                        <div className="flex items-start justify-between mb-3">
-                                            <div
-                                                className="flex items-center gap-2 px-2.5 py-1 bg-primary/10 text-primary rounded-full hover:bg-primary/20 transition-colors cursor-pointer"
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    seekVideo(parseTimestamp(summary.timestamp));
-                                                }}
-                                                title="Click to seek"
-                                            >
-                                                <Clock className="w-3 h-3" />
-                                                <span className="text-[10px] font-bold font-mono uppercase tracking-wider">
-                                                    {formatTime(parseTimestamp(summary.timestamp))}
-                                                </span>
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                                <button
-                                                    className="p-1.5 hover:bg-primary/10 rounded-lg text-muted-foreground hover:text-primary transition-colors"
-                                                    onClick={(e) => {
-                                                        e.stopPropagation()
-                                                        console.log('AI Explanation for', summary.title)
-                                                    }}
-                                                    title="AI Explanation"
-                                                >
-                                                    <Sparkles className="w-4 h-4" />
-                                                </button>
-                                                <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
-                                            </div>
-                                        </div>
-
-                                        <div className="space-y-2">
-                                            <h3 className="font-bold text-base leading-tight group-hover:text-primary transition-colors">
-                                                {summary.title}
-                                            </h3>
-                                            <p className="text-sm text-muted-foreground line-clamp-2 leading-relaxed">
-                                                {summary.summary}
-                                            </p>
-                                        </div>
-
-                                        <div className="mt-4 flex items-center gap-4 border-t border-border/50 pt-4">
-                                            <div className="flex items-center gap-1.5">
-                                                <BookOpen className="w-3.5 h-3.5 text-muted-foreground" />
-                                                <span className="text-[11px] font-medium text-muted-foreground uppercase">{summary.details.length} Sub-topics</span>
-                                            </div>
+                                isSummaryLoading ? (
+                                    <div className="flex flex-col items-center justify-center p-8 h-full">
+                                        <div className="w-full max-w-sm">
+                                            <LoadingSteps isExtractingAudio={isExtractingAudio} compact={true} />
                                         </div>
                                     </div>
-                                ))
+                                ) : (
+                                    summaries.map((summary) => (
+                                        <div
+                                            key={summary.id}
+                                            onClick={() => onSelectTopic(summary)}
+                                            className="group relative bg-card hover:bg-accent/30 border border-border p-5 rounded-2xl cursor-pointer transition-all duration-300 hover:shadow-lg active:scale-[0.98]"
+                                        >
+                                            <div className="flex items-start justify-between mb-3">
+                                                <div
+                                                    className="flex items-center gap-2 px-2.5 py-1 bg-primary/10 text-primary rounded-full hover:bg-primary/20 transition-colors cursor-pointer"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        seekVideo(parseTimestamp(summary.timestamp));
+                                                    }}
+                                                    title="Click to seek"
+                                                >
+                                                    <Clock className="w-3 h-3" />
+                                                    <span className="text-[10px] font-bold font-mono uppercase tracking-wider">
+                                                        {formatTime(parseTimestamp(summary.timestamp))}
+                                                    </span>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <button
+                                                        className="p-1.5 hover:bg-primary/10 rounded-lg text-muted-foreground hover:text-primary transition-colors"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation()
+                                                            console.log('AI Explanation for', summary.title)
+                                                        }}
+                                                        title="AI Explanation"
+                                                    >
+                                                        <Sparkles className="w-4 h-4" />
+                                                    </button>
+                                                    <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
+                                                </div>
+                                            </div>
+
+                                            <div className="space-y-2">
+                                                <h3 className="font-bold text-base leading-tight group-hover:text-primary transition-colors">
+                                                    {summary.title}
+                                                </h3>
+                                                <p className="text-sm text-muted-foreground line-clamp-2 leading-relaxed">
+                                                    {summary.summary}
+                                                </p>
+                                            </div>
+
+                                            <div className="mt-4 flex items-center gap-4 border-t border-border/50 pt-4">
+                                                <div className="flex items-center gap-1.5">
+                                                    <BookOpen className="w-3.5 h-3.5 text-muted-foreground" />
+                                                    <span className="text-[11px] font-medium text-muted-foreground uppercase">{summary.details.length} Sub-topics</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))
+                                )
                             ) : (
                                 <div className="space-y-4">
                                     {transcriptions.map((segment, i) => (

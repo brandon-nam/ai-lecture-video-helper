@@ -3,7 +3,7 @@ import { Caption, InitialScreen } from './components/InitialScreen'
 import { LoadingScreen } from './components/LoadingScreen'
 import { ResultScreen } from './components/ResultScreen'
 import { DetailsScreen } from './components/DetailsScreen'
-import { Summary } from './utils/summary'
+import { Summary, generateSummary } from './utils/summary'
 import { getCaptions } from './utils/captions'
 import { getStreamUrl } from './utils/audio'
 import { ErrorScreen } from './components/ErrorScreen'
@@ -129,6 +129,7 @@ function App() {
         setScreen('loading')
     }
 
+    const [isSummaryLoading, setIsSummaryLoading] = useState(false)
     const handleRedo = () => {
         setScreen('initial')
         setSummaries([])
@@ -138,16 +139,42 @@ function App() {
         }
     }
 
+    const handleLoadSummary = async () => {
+        if (isSummaryLoading || summaries.length > 0) return
 
+        setIsSummaryLoading(true)
+        try {
+            // Note: We need a way to call generateSummary here, but we need captions/streamUrl
+            // Since we're in App.tsx, we have access to state.
+            // Using the same logic as in LoadingScreen, but simplified for just summary
+
+            // We need to import generateSummary in App.tsx if it's not already used directly... 
+            // Actually, LoadingScreen handles the logic. 
+            // But here we want to trigger it from ResultScreen.
+            // We can reuse the generateSummary function from utils.
+
+            const controller = new AbortController()
+            const result = await generateSummary(captions, streamUrl, duration, {
+                signal: controller.signal
+            })
+            setSummaries(result)
+        } catch (error) {
+            console.error("Failed to load summary lazily", error)
+        } finally {
+            setIsSummaryLoading(false)
+        }
+    }
 
 
     const handleSummaryGenerateFail = () => {
         setScreen('error')
+        setIsSummaryLoading(false)
     }
 
     const handleSummaryGenerated = (newSummaries: Summary[]) => {
         setSummaries(newSummaries)
         setScreen('results')
+        setIsSummaryLoading(false)
     }
 
     const handleTranscriptionGenerated = (segments: TranscriptionSegment[]) => {
@@ -202,6 +229,9 @@ function App() {
                         initialMode={processMode}
                         onSelectTopic={handleSelectTopic}
                         onRedo={handleRedo}
+                        isSummaryLoading={isSummaryLoading}
+                        onLoadSummary={handleLoadSummary}
+                        isExtractingAudio={!hasCaptions}
                     />
                 )}
 
